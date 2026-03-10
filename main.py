@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from models import Product
+from database import session, engine
+import database_models
 
 app = FastAPI()
+
+database_models.Base.metadata.create_all(bind=engine)
 
 Products = [
     Product(id=1, name="Laptop", description="A high performance laptop", price=999.99, quantity=10),
@@ -10,12 +14,26 @@ Products = [
     Product(id=4, name="Headphones", description="Wireless noise-cancelling headphones", price=149.99, quantity=30),
 ]
 
+def init_db():
+    db = session()
+
+    count = db.query(database_models.Product).count
+    
+    if count == 0:
+        for product in Products:
+            db.add(database_models.Product(**product.model_dump()))
+        db.commit()
+
+init_db()
+
 @app.get("/")
 def greet():
     return "Welcome to Telusko Trac"
 
 @app.get("/products")
 def get_all_products():
+    # db = get_db()
+    # db.query()
     return Products
 
 @app.get("/products/{product_id}")
