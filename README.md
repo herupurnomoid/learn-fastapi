@@ -8,9 +8,9 @@
 
 ### 1. Clone repositori
 ```bash
-git clone <url_repositori>
+git clone https://github.com/herupurnomoid/learn-fastapi.git
 cd learn-fastapi
-````
+```
 
 ### 2. Buat virtual environment
 
