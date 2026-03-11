@@ -8,56 +8,36 @@ app = FastAPI()
 
 database_models.Base.metadata.create_all(bind=engine)
 
-Products = [
-    Product(id=1, name="Laptop", description="A high performance laptop", price=999.99, quantity=10),
-    Product(id=2, name="Smartphone", description="A latest model smartphone", price=499.99, quantity=20),
-    Product(id=3, name="Tablet", description="10-inch touchscreen tablet", price=299.99, quantity=15),
-    Product(id=4, name="Headphones", description="Wireless noise-cancelling headphones", price=149.99, quantity=30),
-]
-
 def get_db():
+    """Get database session"""
     db = session()
     try:
         yield db
     finally:
         db.close()
 
-def init_db():
-    db = session()
-
-    count = db.query(database_models.Product).count()
-    
-    if count == 0:
-        for product in Products:
-            db.add(database_models.Product(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                price=product.price,
-                quantity=product.quantity
-            ))
-        db.commit()
-
-init_db()
-
 @app.get("/")
-def greet():
-    return "Welcome to Telusko Trac"
+def root():
+    """Welcome endpoint"""
+    return {"message": "Welcome to Telusko API"}
 
 @app.get("/products")
 def get_all_products(db: Session = Depends(get_db)):
-    db_products = db.query(database_models.Product).all()
-    return db_products
+    """Get all products"""
+    products = db.query(database_models.Product).all()
+    return products
 
 @app.get("/products/{product_id}")
 def get_product_by_id(product_id: int, db: Session = Depends(get_db)):
-    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
-    if db_product:
-        return db_product
+    """Get product by ID"""
+    product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    if product:
+        return product
     return {"error": "Product not found"}
 
 @app.post("/products")
 def create_product(product: Product, db: Session = Depends(get_db)):
+    """Create a new product"""
     db_product = database_models.Product(
         id=product.id,
         name=product.name,
@@ -68,16 +48,14 @@ def create_product(product: Product, db: Session = Depends(get_db)):
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
-    return {
-        "message": "Product created successfully",
-        "product": db_product
-    }
+    return db_product
 
 @app.put("/products/{product_id}")
 def update_product(product_id: int, updated_product: Product, db: Session = Depends(get_db)):
-    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    """Update a product"""
+    product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
     
-    if db_product:
+    if product:
         db.query(database_models.Product).filter(database_models.Product.id == product_id).update({
             database_models.Product.name: updated_product.name,
             database_models.Product.description: updated_product.description,
@@ -86,19 +64,17 @@ def update_product(product_id: int, updated_product: Product, db: Session = Depe
         })
         db.commit()
         updated = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
-        return {
-            "message": "Product updated successfully",
-            "product": updated
-        }
+        return updated
             
     return {"error": "Product not found"}
 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db)):
-    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    """Delete a product"""
+    product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
     
-    if db_product:
-        db.delete(db_product)
+    if product:
+        db.delete(product)
         db.commit()
         return {"message": "Product deleted successfully"}
         
