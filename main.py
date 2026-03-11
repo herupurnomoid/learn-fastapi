@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from models import Product
 from database import session, engine
 import database_models
+from sqlalchemy.orm import Session
 
 app = FastAPI()
 
@@ -13,6 +14,13 @@ Products = [
     Product(id=3, name="Tablet", description="10-inch touchscreen tablet", price=299.99, quantity=15),
     Product(id=4, name="Headphones", description="Wireless noise-cancelling headphones", price=149.99, quantity=30),
 ]
+
+def get_db():
+    db = session()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def init_db():
     db = session()
@@ -31,17 +39,15 @@ def greet():
     return "Welcome to Telusko Trac"
 
 @app.get("/products")
-def get_all_products():
-    # db = get_db()
-    # db.query()
-    return Products
+def get_all_products(db: Session = Depends(get_db)):
+    db_products = db.query(database_models.Product).all()
+    return db_products
 
 @app.get("/products/{product_id}")
-def get_product_by_id(product_id: int):
-    for product in Products:
-        if product.id == product_id:
-            return product
-        
+def get_product_by_id(product_id: int, db: Session = Depends(get_db)):
+    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    if db_product:
+        return db_product
     return {"error": "Product not found"}
 
 @app.post("/products")
