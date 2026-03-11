@@ -25,11 +25,17 @@ def get_db():
 def init_db():
     db = session()
 
-    count = db.query(database_models.Product).count
+    count = db.query(database_models.Product).count()
     
     if count == 0:
         for product in Products:
-            db.add(database_models.Product(**product.model_dump()))
+            db.add(database_models.Product(
+                id=product.id,
+                name=product.name,
+                description=product.description,
+                price=product.price,
+                quantity=product.quantity
+            ))
         db.commit()
 
 init_db()
@@ -51,24 +57,49 @@ def get_product_by_id(product_id: int, db: Session = Depends(get_db)):
     return {"error": "Product not found"}
 
 @app.post("/products")
-def create_product(product: Product):
-    Products.append(product)
-    return product
+def create_product(product: Product, db: Session = Depends(get_db)):
+    db_product = database_models.Product(
+        id=product.id,
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        quantity=product.quantity
+    )
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return {
+        "message": "Product created successfully",
+        "product": db_product
+    }
 
 @app.put("/products/{product_id}")
-def update_product(product_id: int, updated_product: Product):
-    for index in range(len(Products)):
-        if Products[index].id == product_id:
-            Products[index] = updated_product
-            return "Product updated successfully"
-        
+def update_product(product_id: int, updated_product: Product, db: Session = Depends(get_db)):
+    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    
+    if db_product:
+        db.query(database_models.Product).filter(database_models.Product.id == product_id).update({
+            database_models.Product.name: updated_product.name,
+            database_models.Product.description: updated_product.description,
+            database_models.Product.price: updated_product.price,
+            database_models.Product.quantity: updated_product.quantity
+        })
+        db.commit()
+        updated = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+        return {
+            "message": "Product updated successfully",
+            "product": updated
+        }
+            
     return {"error": "Product not found"}
 
 @app.delete("/products/{product_id}")
-def delete_product(product_id: int):
-    for index in range(len(Products)):
-        if Products[index].id == product_id:
-            del Products[index]
-            return "Product deleted successfully"
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    db_product = db.query(database_models.Product).filter(database_models.Product.id == product_id).first()
+    
+    if db_product:
+        db.delete(db_product)
+        db.commit()
+        return {"message": "Product deleted successfully"}
         
     return {"error": "Product not found"}
